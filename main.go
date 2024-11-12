@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
@@ -19,14 +18,6 @@ func (cfg *apiConfig) middlewareMetricInc(next http.Handler) http.Handler {
 	})
 }
 
-func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, req *http.Request) {
-
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("Hits: %v", cfg.fileserverHits.Load())))
-
-}
-
 func main() {
 	port := "8080"
 	directory := "."
@@ -34,9 +25,9 @@ func main() {
 		fileserverHits: atomic.Int32{},
 	}
 	servMux := http.NewServeMux()
-	servMux.HandleFunc("/healthz", handlerReadiness)
-	servMux.HandleFunc("/metrics", cfg.handlerMetrics)
-	servMux.HandleFunc("/reset", cfg.handlerReset)
+	servMux.HandleFunc("GET /api/healthz", handlerReadiness)
+	servMux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
+	servMux.HandleFunc("POST /admin/reset", cfg.handlerReset)
 	appHandler := http.StripPrefix("/app", http.FileServer(http.Dir(directory)))
 	servMux.Handle("/app/", cfg.middlewareMetricInc(appHandler))
 	server := http.Server{
