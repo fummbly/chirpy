@@ -28,6 +28,7 @@ func main() {
 	servMux.HandleFunc("GET /api/healthz", handlerReadiness)
 	servMux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	servMux.HandleFunc("POST /admin/reset", cfg.handlerReset)
+	servMux.HandleFunc("POST /api/validate_chirp", handleValidate)
 	appHandler := http.StripPrefix("/app", http.FileServer(http.Dir(directory)))
 	servMux.Handle("/app/", cfg.middlewareMetricInc(appHandler))
 	server := http.Server{
