@@ -1,13 +1,21 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/fummbly/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	database       *database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricInc(next http.Handler) http.Handler {
@@ -19,10 +27,20 @@ func (cfg *apiConfig) middlewareMetricInc(next http.Handler) http.Handler {
 }
 
 func main() {
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		fmt.Printf("Error getting sql server: %v\n", err)
+		return
+	}
+
 	port := "8080"
 	directory := "."
 	cfg := apiConfig{
 		fileserverHits: atomic.Int32{},
+		database:       database.New(db),
 	}
 	servMux := http.NewServeMux()
 	servMux.HandleFunc("GET /api/healthz", handlerReadiness)
