@@ -16,6 +16,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	database       *database.Queries
+	platform       string
 }
 
 func (cfg *apiConfig) middlewareMetricInc(next http.Handler) http.Handler {
@@ -41,12 +42,14 @@ func main() {
 	cfg := apiConfig{
 		fileserverHits: atomic.Int32{},
 		database:       database.New(db),
+		platform:       os.Getenv("PLATFORM"),
 	}
 	servMux := http.NewServeMux()
 	servMux.HandleFunc("GET /api/healthz", handlerReadiness)
 	servMux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	servMux.HandleFunc("POST /admin/reset", cfg.handlerReset)
 	servMux.HandleFunc("POST /api/validate_chirp", handleValidate)
+	servMux.HandleFunc("POST /api/users", cfg.handleAddUser)
 	appHandler := http.StripPrefix("/app", http.FileServer(http.Dir(directory)))
 	servMux.Handle("/app/", cfg.middlewareMetricInc(appHandler))
 	server := http.Server{
