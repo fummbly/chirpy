@@ -35,7 +35,7 @@ func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	respondWithJson(w, http.StatusOK, Response{
+	respondWithJson(w, http.StatusCreated, Response{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
