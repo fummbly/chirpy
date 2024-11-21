@@ -1,5 +1,4 @@
 out
 .env
-gooseUP.sh
-gooseDOWN.sh
+*.sh
 
