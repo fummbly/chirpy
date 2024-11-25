@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"github.com/fummbly/chirpy/internal/auth"
-	"github.com/fummbly/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
-func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 
-	type Paramaters struct {
+	type Parameters struct {
 		Password string `json:"password"`
 		Email    string `json:"email"`
 	}
@@ -25,34 +24,26 @@ func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	decoder := json.NewDecoder(req.Body)
-	params := Paramaters{}
+	params := Parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Failed to decode request", err)
 		return
 	}
 
-	if params.Password == "" {
-		respondWithError(w, http.StatusBadRequest, "Password is required to create user", err)
-		return
-	}
-
-	hash, err := auth.HashPassword(params.Password)
+	user, err := cfg.database.GetUser(req.Context(), params.Email)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Failed to create hashed password", err)
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
 	}
 
-	user, err := cfg.database.CreateUser(req.Context(), database.CreateUserParams{
-		Email:          params.Email,
-		HashedPassword: hash,
-	})
+	err = auth.CheckPasswordHash(params.Password, user.HashedPassword)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Failed to create user", err)
+		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
 	}
 
-	respondWithJson(w, http.StatusCreated, Response{
+	respondWithJson(w, http.StatusOK, Response{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
