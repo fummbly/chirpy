@@ -1,36 +1,46 @@
 package main
 
 import (
-  "encoding/json"
-  "net/http"
-  "time"
-  "strings"
-  "slices"
+	"encoding/json"
+	"net/http"
+	"slices"
+	"strings"
+	"time"
 
-  "github.com/google/uuid"
-  "github.com/fummbly/chirpy/internal/database"
-
+	"github.com/fummbly/chirpy/internal/auth"
+	"github.com/fummbly/chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 type Chirp struct {
-  ID uuid.UUID `json:"id"`
-  CreatedAt time.Time `json:"created_at"`
-  UpdatedAt time.Time `json:"updated_at"`
-  UserID uuid.UUID `json:"user_id"`
-  Body string `json:"body"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	UserID    uuid.UUID `json:"user_id"`
+	Body      string    `json:"body"`
 }
 
 func (cfg *apiConfig) handleAddChirp(w http.ResponseWriter, req *http.Request) {
 
-	type Parameters struct {
-		Body   string    `json:"body"`
-		UserId uuid.UUID `json:"user_id"`
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Failed to get Bearer token", err)
+		return
 	}
 
+	userID, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Failed to validate token", err)
+		return
+	}
+
+	type Parameters struct {
+		Body string `json:"body"`
+	}
 
 	decoder := json.NewDecoder(req.Body)
 	params := Parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Failed to decode request", err)
 		return
@@ -44,7 +54,7 @@ func (cfg *apiConfig) handleAddChirp(w http.ResponseWriter, req *http.Request) {
 
 	chirp, err := cfg.database.CreateChirp(req.Context(), database.CreateChirpParams{
 		Body:   validatedBody,
-		UserID: params.UserId,
+		UserID: userID,
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Failed to create chirp", err)
@@ -60,12 +70,11 @@ func (cfg *apiConfig) handleAddChirp(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
-
 func validateChrip(str string) (int, string) {
-  if len(str) > 140 {
-    return 400, ""
+	if len(str) > 140 {
+		return 400, ""
 
-  }
+	}
 
 	profainity := []string{"kerfuffle", "sharbert", "fornax"}
 
@@ -81,5 +90,3 @@ func validateChrip(str string) (int, string) {
 	return 200, newStr
 
 }
-
-

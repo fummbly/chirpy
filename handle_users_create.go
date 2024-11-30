@@ -11,11 +11,11 @@ import (
 )
 
 type User struct {
-  ID uuid.UUID `json:"id"`
-  CreatedAt time.Time `json:"created_at"`
-  UpdatedAt time.Time `json:"updated_at"`
-  Email string `json:"email"`
-  Password string `json:"-"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+	Password  string    `json:"-"`
 }
 
 func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, req *http.Request) {
@@ -24,7 +24,6 @@ func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, req *http.Request) {
 		Password string `json:"password"`
 		Email    string `json:"email"`
 	}
-
 
 	decoder := json.NewDecoder(req.Body)
 	params := Paramaters{}

@@ -12,8 +12,9 @@ import (
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 
 	type Parameters struct {
-		Password string `json:"password"`
-		Email    string `json:"email"`
+		Password  string `json:"password"`
+		Email     string `json:"email"`
+		ExpiresIn int    `json:"expires_in_seconds"`
 	}
 
 	type Response struct {
@@ -21,6 +22,7 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email     string    `json:"email"`
+		Token     string    `json:"token"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -43,11 +45,27 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	var expireTime time.Duration
+
+	if params.ExpiresIn > 3600 || params.ExpiresIn <= 0 {
+
+		expireTime = time.Hour
+	} else {
+		expireTime = time.Second * time.Duration(params.ExpiresIn)
+	}
+
+	token, err := auth.MakeJWT(user.ID, cfg.secret, expireTime)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to create token", err)
+		return
+	}
+
 	respondWithJson(w, http.StatusOK, Response{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+		Token:     token,
 	})
 
 }
