@@ -6,23 +6,24 @@ import (
 	"time"
 
 	"github.com/fummbly/chirpy/internal/auth"
+	"github.com/fummbly/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 
 	type Parameters struct {
-		Password  string `json:"password"`
-		Email     string `json:"email"`
-		ExpiresIn int    `json:"expires_in_seconds"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
 
 	type Response struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
-		Token     string    `json:"token"`
+		ID           uuid.UUID `json:"id"`
+		CreatedAt    time.Time `json:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Email        string    `json:"email"`
+		Token        string    `json:"token"`
+		RefreshToken string    `json:"refresh_token"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -45,14 +46,7 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var expireTime time.Duration
-
-	if params.ExpiresIn > 3600 || params.ExpiresIn <= 0 {
-
-		expireTime = time.Hour
-	} else {
-		expireTime = time.Second * time.Duration(params.ExpiresIn)
-	}
+	expireTime := time.Hour
 
 	token, err := auth.MakeJWT(user.ID, cfg.secret, expireTime)
 	if err != nil {
@@ -60,12 +54,30 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to create refresh token", err)
+		return
+	}
+
+	refreshExp := time.Now().Add((time.Hour * 24) * 60)
+
+	_, err = cfg.database.CreateRefreshToken(req.Context(), database.CreateRefreshTokenParams{
+		ID:        refreshToken,
+		UserID:    user.ID,
+		ExpiresAt: refreshExp,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to create refresh token in database", err)
+	}
+
 	respondWithJson(w, http.StatusOK, Response{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-		Token:     token,
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+		Email:        user.Email,
+		Token:        token,
+		RefreshToken: refreshToken,
 	})
 
 }
