@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -20,38 +19,24 @@ func (cfg *apiConfig) handleRefresh(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	token, err := cfg.database.GetRefreshToken(req.Context(), requestToken)
+	user, err := cfg.database.GetUserFromRefreshToken(req.Context(), requestToken)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Token not found", err)
+		respondWithError(w, http.StatusBadRequest, "Couldn't get user from token", err)
 		return
 	}
 
-	if token.ExpiresAt.Before(time.Now()) {
-		respondWithError(w, http.StatusUnauthorized, "Token has expired", err)
-		return
-	}
-
-	if token.RevokedAt.Valid {
-		respondWithError(w, http.StatusUnauthorized, "Token was revoked", err)
-		return
-	}
-
-	fmt.Println(token.RevokedAt)
-
-	user, err := cfg.database.GetUserFromRefreshToken(req.Context(), token.ID)
+	accessToken, err := auth.MakeJWT(
+		user.ID,
+		cfg.secret,
+		time.Hour,
+	)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Failed to get user by refresh token", err)
-		return
-	}
-
-	newJWT, err := auth.MakeJWT(user.ID, cfg.secret, time.Hour)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Failed to create new jwt", err)
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate and create access token", err)
 		return
 	}
 
 	respondWithJson(w, http.StatusOK, Response{
-		Token: newJWT,
+		Token: accessToken,
 	})
 
 }

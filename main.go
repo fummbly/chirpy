@@ -48,18 +48,27 @@ func main() {
 	}
 
 	servMux := http.NewServeMux()
-	servMux.HandleFunc("GET /api/healthz", handlerReadiness)
+
+	// ------------ Admin ---------------
 	servMux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
+
+	servMux.HandleFunc("POST /admin/reset", cfg.handlerReset)
+
+	// ------------- API ----------------
+	servMux.HandleFunc("GET /api/healthz", handlerReadiness)
 	servMux.HandleFunc("GET /api/chirps", cfg.handleGetChirps)
 	servMux.HandleFunc("GET /api/chirps/{chirp_id}", cfg.handleGetChirp)
-	servMux.HandleFunc("POST /admin/reset", cfg.handlerReset)
+
 	servMux.HandleFunc("POST /api/chirps", cfg.handleAddChirp)
 	servMux.HandleFunc("POST /api/users", cfg.handleAddUser)
 	servMux.HandleFunc("POST /api/login", cfg.handleLogin)
 	servMux.HandleFunc("POST /api/refresh", cfg.handleRefresh)
 	servMux.HandleFunc("POST /api/revoke", cfg.handleRevoke)
+
+	// ------------- APP ----------------
 	appHandler := http.StripPrefix("/app", http.FileServer(http.Dir(directory)))
 	servMux.Handle("/app/", cfg.middlewareMetricInc(appHandler))
+
 	server := http.Server{
 		Handler: servMux,
 		Addr:    ":" + port,

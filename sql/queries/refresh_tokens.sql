@@ -22,15 +22,16 @@ WHERE id = $1;
 
 
 -- name: GetUserFromRefreshToken :one
-SELECT * FROM users
-WHERE users.id = (
-  SELECT user_id FROM refresh_tokens
-  WHERE refresh_tokens.id = $1
-);
+SELECT users.* FROM users
+JOIN refresh_tokens ON users.id = refresh_tokens.user_id
+WHERE refresh_tokens.id = $1
+AND revoked_at is NULL
+AND expires_at > NOW();
 
 
--- name: SetRevokedAt :exec
+-- name: SetRevokedAt :one
 UPDATE refresh_tokens
 SET revoked_at = NOW(), updated_at = NOW()
-WHERE id = $1;
+WHERE id = $1
+RETURNING *;
 

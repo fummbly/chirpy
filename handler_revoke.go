@@ -8,27 +8,18 @@ import (
 
 func (cfg *apiConfig) handleRevoke(w http.ResponseWriter, req *http.Request) {
 
-	type Response struct {
-	}
-
-	requestToken, err := auth.GetBearerToken(req.Header)
+	refreshToken, err := auth.GetBearerToken(req.Header)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Failed to get request token", err)
+		respondWithError(w, http.StatusBadRequest, "Couldn't find token", err)
 		return
 	}
 
-	token, err := cfg.database.GetRefreshToken(req.Context(), requestToken)
+	_, err = cfg.database.SetRevokedAt(req.Context(), refreshToken)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Token could not be found", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't set revoke", err)
 		return
 	}
 
-	err = cfg.database.SetRevokedAt(req.Context(), token.ID)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Failed to set revoked at time", err)
-		return
-	}
-
-	respondWithJson(w, http.StatusNoContent, Response{})
+	w.WriteHeader(http.StatusNoContent)
 
 }
