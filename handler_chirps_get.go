@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/google/uuid"
 	"net/http"
-  "github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, req *http.Request) {
@@ -17,8 +17,8 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, req *http.Request) {
 
 	chirp, err := cfg.database.GetChirp(req.Context(), id)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Could not find id", err)
-    return
+		respondWithError(w, http.StatusNotFound, "Could not find id", err)
+		return
 	}
 
 	respondWithJson(w, http.StatusOK, Chirp{
@@ -31,7 +31,6 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, req *http.Request) {
 
 }
 
-
 func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) {
 
 	chirps, err := cfg.database.GetChirps(req.Context())
@@ -39,7 +38,6 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) 
 		respondWithError(w, http.StatusInternalServerError, "Failed to get chirps", err)
 		return
 	}
-
 
 	res := []Chirp{}
 
@@ -56,6 +54,3 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) 
 	respondWithJson(w, http.StatusOK, res)
 
 }
-
-
-
