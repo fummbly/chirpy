@@ -78,6 +78,11 @@ func GetBearerToken(headers http.Header) (string, error) {
 	if len(splitAuth) != 2 {
 		return "", fmt.Errorf("Incorrect format for bearer token")
 	}
+
+	if splitAuth[0] != "Bearer" {
+		return "", errors.New("Request is missing Bearer token")
+	}
+
 	token := splitAuth[1]
 
 	return token, nil

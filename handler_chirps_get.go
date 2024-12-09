@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/google/uuid"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, req *http.Request) {
@@ -33,24 +34,36 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, req *http.Request) {
 
 func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) {
 
-	chirps, err := cfg.database.GetChirps(req.Context())
+	dbChirps, err := cfg.database.GetChirps(req.Context())
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Failed to get chirps", err)
+		respondWithError(w, http.StatusInternalServerError, "couldn't get chirps from database", err)
 		return
 	}
 
-	res := []Chirp{}
+	authorID := uuid.Nil
+	authorIDString := req.URL.Query().Get("author_id")
+	if authorIDString != "" {
+		authorID, err = uuid.Parse(authorIDString)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid author id", err)
+			return
+		}
+	}
 
-	for _, chirp := range chirps {
-		res = append(res, Chirp{
-			ID:        chirp.ID,
-			CreatedAt: chirp.CreatedAt,
-			UpdatedAt: chirp.UpdatedAt,
-			Body:      chirp.Body,
-			UserID:    chirp.UserID,
+	chirps := []Chirp{}
+	for _, dbChirp := range dbChirps {
+		if authorID != uuid.Nil && dbChirp.UserID != authorID {
+			continue
+		}
+
+		chirps = append(chirps, Chirp{
+			ID:        dbChirp.ID,
+			CreatedAt: dbChirp.CreatedAt,
+			UpdatedAt: dbChirp.UpdatedAt,
+			UserID:    dbChirp.UserID,
+			Body:      dbChirp.Body,
 		})
 	}
 
-	respondWithJson(w, http.StatusOK, res)
-
+	respondWithJson(w, http.StatusOK, chirps)
 }

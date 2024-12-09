@@ -18,6 +18,7 @@ type apiConfig struct {
 	database       *database.Queries
 	platform       string
 	secret         string
+	polka_key      string
 }
 
 func (cfg *apiConfig) middlewareMetricInc(next http.Handler) http.Handler {
@@ -45,6 +46,7 @@ func main() {
 		database:       database.New(db),
 		platform:       os.Getenv("PLATFORM"),
 		secret:         os.Getenv("SECRET"),
+		polka_key:      os.Getenv("POLKA_KEY"),
 	}
 
 	servMux := http.NewServeMux()
@@ -64,6 +66,7 @@ func main() {
 	servMux.HandleFunc("POST /api/login", cfg.handleLogin)
 	servMux.HandleFunc("POST /api/refresh", cfg.handleRefresh)
 	servMux.HandleFunc("POST /api/revoke", cfg.handleRevoke)
+	servMux.HandleFunc("POST /api/polka/webhooks", cfg.handleUserUpgrade)
 
 	servMux.HandleFunc("PUT /api/users", cfg.handlerUserUpdate)
 
