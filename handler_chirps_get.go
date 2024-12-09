@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/fummbly/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -34,10 +35,22 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, req *http.Request) {
 
 func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) {
 
-	dbChirps, err := cfg.database.GetChirps(req.Context())
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "couldn't get chirps from database", err)
-		return
+	sort := req.URL.Query().Get("sort")
+
+	var dbChirps []database.Chirp
+	var err error
+
+	if sort == "" || sort == "asc" {
+		dbChirps, err = cfg.database.GetChirpsAsc(req.Context())
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't get chirps from database", err)
+		}
+	} else {
+		dbChirps, err = cfg.database.GetChirpsDesc(req.Context())
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "couldn't get chirps from database", err)
+			return
+		}
 	}
 
 	authorID := uuid.Nil
